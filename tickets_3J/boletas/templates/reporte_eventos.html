@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Informe de Boletas Vendidas por Evento</h2>
+
+    <!-- Filtro de eventos -->
+    <form method="get" class="row g-3 align-items-center">
+        <div class="col-auto">
+            <label for="evento">Seleccionar Evento:</label>
+            <select name="evento" id="evento" class="form-control">
+                <option value="">Todos</option>
+                {% for evento in eventos %}
+                    <option value="{{ evento.id }}" {% if evento.id == evento_seleccionado %}selected{% endif %}>
+                        {{ evento.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    
+        <div class="col-auto">
+            <label for="fecha_inicio">Desde:</label>
+            <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+        </div>
+    
+        <div class="col-auto">
+            <label for="fecha_fin">Hasta:</label>
+            <input type="date" name="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+        </div>
+    
+        <div class="col-auto">
+            <label for="estado">Estado:</label>
+            <select name="estado" id="estado" class="form-control" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                <option value="activo" {% if estado_seleccionado == 'activo' %}selected{% endif %}>Activos</option>
+                <option value="inactivo" {% if estado_seleccionado == 'inactivo' %}selected{% endif %}>Inactivos</option>
+            </select>
+        </div>
+    
+        <div class="col-auto d-flex align-items-end">
+            <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+            <a href="{% url 'reporte_eventos' %}" class="btn btn-secondary">Limpiar</a>
+        </div>
+    </form>
+    
+
+    <!-- Gráfica -->
+    {% if resumen %}
+    <canvas id="graficoEventos" width="400" height="200"></canvas>
+    {% else %}
+    <div class="alert alert-warning mt-3" role="alert">
+        No hay datos disponibles para generar la gráfica.
+    </div>
+    {% endif %}
+
+    <!-- Tabla de resumen -->
+    <table class="table table-bordered table-hover mt-3">
+        <thead>
+            <tr>
+                <th>Evento</th>
+                <th>Total Boletas Vendidas</th>
+                <th>Total Compras</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in resumen %}
+            <tr>
+                <td>{{ item.evento__nombre }}</td>
+                <td>{{ item.total_boletas }}</td>
+                <td>{{ item.total_compras }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Tabla de usuarios (si hay filtrado por evento) -->
+    {% if usuarios %}
+    <h4 class="mt-5">Usuarios que compraron para el evento</h4>
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr>
+                <th>Nombre de Usuario</th>
+                <th>Cantidad Comprada</th>
+                <th>Fecha de Compra</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for compra in usuarios %}
+            <tr>
+                <td>{{ compra.usuario.username }}</td>
+                <td>{{ compra.cantidad }}</td>
+                <td>{{ compra.fecha|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% if resumen %}
+<script>
+    const labels = [{% for item in resumen %}"{{ item.evento__nombre }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+    const data = {
+        labels: labels,
+        datasets: [{
+            label: 'Boletas Vendidas',
+            data: [{% for item in resumen %}{{ item.total_boletas|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    };
+
+    const config = {
+        type: 'bar',
+        data: data,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    };
+
+    new Chart(document.getElementById('graficoEventos'), config);
+</script>
+{% endif %}
+{% endblock %}
+
+
